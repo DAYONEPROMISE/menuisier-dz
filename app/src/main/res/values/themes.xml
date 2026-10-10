@@ -1,0 +1,4 @@
+<resources>
+    <!-- Theme stub; real Material3 theme is applied from Compose. -->
+    <style name="Theme.MenuisierDZ" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
