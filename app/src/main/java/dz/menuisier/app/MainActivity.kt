@@ -94,12 +94,12 @@ fun AppRoot(
     onDark: (Boolean?) -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
-    val ordersLabel = if (arabic) "الطلبات" else "Commandes"
-    val cutLabel = if (arabic) "القص" else "Découpe"
+    val ordersLabel = if (arabic) "\u0627\u0644\u0637\u0644\u0628\u0627\u062a" else "Commandes"
+    val cutLabel = if (arabic) "\u0627\u0644\u0642\u0635" else "D\u00e9coupe"
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (arabic) "منجرة DZ" else "MenuisierDZ") },
+                title = { Text(if (arabic) "\u0645\u0646\u062c\u0631\u0629 DZ" else "MenuisierDZ") },
                 actions = {
                     IconButton(
                         onClick = { onDark(if (darkTheme) false else true) },
@@ -156,14 +156,14 @@ private fun DzNavItems(tab: Int, ordersLabel: String, cutLabel: String, onTab: (
                 selected = tab == i,
                 onClick = { onTab(i) },
                 label = { Text(label) },
-                icon = { Icon(icon, contentDescription = null) },
+                icon = { Icon(icon, contentDescription = label) },
             )
         } else {
             NavigationRailItem(
                 selected = tab == i,
                 onClick = { onTab(i) },
                 label = { Text(label) },
-                icon = { Icon(icon, contentDescription = null) },
+                icon = { Icon(icon, contentDescription = label) },
             )
         }
     }
@@ -181,10 +181,10 @@ fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text(if (arabic) "الزبون" else "Client") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(name, { name = it }, label = { Text(if (arabic) "\u0627\u0644\u0632\u0628\u0648\u0646" else "Client") }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(total, { total = it.filter(Char::isDigit) }, label = { Text(if (arabic) "المجموع (دج)" else "Total (DZD)") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(acompte, { acompte = it.filter(Char::isDigit) }, label = { Text(if (arabic) "العربون (دج)" else "Acompte (DZD)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(total, { total = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0645\u062c\u0645\u0648\u0639 (\u062f\u062c)" else "Total (DZD)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(acompte, { acompte = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0639\u0631\u0628\u0648\u0646 (\u062f\u062c)" else "Acompte (DZD)") }, modifier = Modifier.weight(1f))
                 }
                 Button(onClick = {
                     val t = total.toLongOrNull() ?: return@Button
@@ -193,7 +193,7 @@ fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
                         db.orderDao().insertOrder(ClientOrder(clientName = name, totalDzd = t, acompteDzd = a))
                         name = ""; total = ""; acompte = ""
                     }
-                }) { Text(if (arabic) "إضافة طلب" else "Ajouter commande") }
+                }) { Text(if (arabic) "\u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628" else "Ajouter commande") }
                 Spacer(Modifier.height(4.dp))
             }
         }
@@ -202,12 +202,12 @@ fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(o.clientName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (arabic) "المجموع: ${dzd.format(o.totalDzd)} دج — العربون: ${dzd.format(o.acompteDzd)} دج — الباقي: ${dzd.format(o.resteDzd)} دج"
-                        else "Total : ${dzd.format(o.totalDzd)} DZD — Acompte : ${dzd.format(o.acompteDzd)} DZD — Reste : ${dzd.format(o.resteDzd)} DZD",
+                        if (arabic) "\u0627\u0644\u0645\u062c\u0645\u0648\u0639: ${dzd.format(o.totalDzd)} \u062f\u062c \u2014 \u0627\u0644\u0639\u0631\u0628\u0648\u0646: ${dzd.format(o.acompteDzd)} \u062f\u062c \u2014 \u0627\u0644\u0628\u0627\u0642\u064a: ${dzd.format(o.resteDzd)} \u062f\u062c"
+                        else "Total : ${dzd.format(o.totalDzd)} DZD \u2014 Acompte : ${dzd.format(o.acompteDzd)} DZD \u2014 Reste : ${dzd.format(o.resteDzd)} DZD",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        if (arabic) "الحالة: ${o.status}" else "Statut : ${o.status}",
+                        if (arabic) "\u0627\u0644\u062d\u0627\u0644\u0629: ${o.status}" else "Statut : ${o.status}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -228,12 +228,12 @@ fun OptimizeScreen(arabic: Boolean) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(stock, { stock = it.filter(Char::isDigit) }, label = { Text(if (arabic) "اللوح (مم)" else "Barre stock (mm)") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(kerf, { kerf = it.filter(Char::isDigit) }, label = { Text(if (arabic) "الشفرة (مم)" else "Lame/kerf (mm)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(stock, { stock = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0644\u0648\u062d (\u0645\u0645)" else "Barre stock (mm)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(kerf, { kerf = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0634\u0641\u0631\u0629 (\u0645\u0645)" else "Lame/kerf (mm)") }, modifier = Modifier.weight(1f))
                 }
                 OutlinedTextField(
                     partsText, { partsText = it },
-                    label = { Text(if (arabic) "القطع: اسم:طولxكمية (سطر لكل قطعة)" else "Pièces : nom:longueurXqté (1/ligne)") },
+                    label = { Text(if (arabic) "\u0627\u0644\u0642\u0637\u0639: \u0627\u0633\u0645:\u0637\u0648\u0644x\u0643\u0645\u064a\u0629 (\u0633\u0637\u0631 \u0644\u0643\u0644 \u0642\u0637\u0639\u0629)" else "Pi\u00e8ces : nom:longueurXqt\u00e9 (1/ligne)") },
                     modifier = Modifier.fillMaxWidth(), minLines = 3,
                 )
                 Button(onClick = {
@@ -244,7 +244,7 @@ fun OptimizeScreen(arabic: Boolean) {
                             val halves = line.split(":")
                             if (halves.size != 2) return@mapNotNull null
                             val (lenQ) = halves.drop(1)
-                            val lq = lenQ.split("x", "X", "×")
+                            val lq = lenQ.split("x", "X", "\u00d7")
                             if (lq.size != 2) return@mapNotNull null
                             val len = lq[0].trim().toIntOrNull() ?: return@mapNotNull null
                             val qty = lq[1].trim().toIntOrNull() ?: return@mapNotNull null
@@ -252,15 +252,15 @@ fun OptimizeScreen(arabic: Boolean) {
                         }
                         val r = CutOptimizer.optimizeLinear(parts, stockLen, kf)
                         buildString {
-                            appendLine(if (arabic) "الألواح: ${r.barsUsed} — الهالك: ${r.totalWasteMm} مم — الاستغلال: ${"%.1f".format(r.utilizationPct)}٪" else "Barres : ${r.barsUsed} — Chutes : ${r.totalWasteMm} mm — Rendement : ${"%.1f".format(r.utilizationPct)} %")
+                            appendLine(if (arabic) "\u0627\u0644\u0623\u0644\u0648\u0627\u062d: ${r.barsUsed} \u2014 \u0627\u0644\u0647\u0627\u0644\u0643: ${r.totalWasteMm} \u0645\u0645 \u2014 \u0627\u0644\u0627\u0633\u062a\u063a\u0644\u0627\u0644: ${"%.1f".format(r.utilizationPct)}\u066a" else "Barres : ${r.barsUsed} \u2014 Chutes : ${r.totalWasteMm} mm \u2014 Rendement : ${"%.1f".format(r.utilizationPct)} %")
                             r.bars.forEach { b ->
-                                appendLine("  #${b.barIndex}: ${b.cuts.joinToString(" + ") { "${it.partLabel}(${it.lengthMm})" }} → chute ${b.wasteMm} mm")
+                                appendLine("  #${b.barIndex}: ${b.cuts.joinToString(" + ") { "${it.partLabel}(${it.lengthMm})" }} \u2192 chute ${b.wasteMm} mm")
                             }
                         }
                     } catch (e: Exception) {
-                        (if (arabic) "خطأ: " else "Erreur : ") + e.message
+                        (if (arabic) "\u062e\u0637\u0623: " else "Erreur : ") + e.message
                     }
-                }) { Text(if (arabic) "احسب" else "Optimiser") }
+                }) { Text(if (arabic) "\u0627\u062d\u0633\u0628" else "Optimiser") }
                 if (result.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
                         Text(result, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge)
