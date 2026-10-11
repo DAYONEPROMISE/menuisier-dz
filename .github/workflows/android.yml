@@ -21,8 +21,11 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
       - name: Set up Gradle (no wrapper in repo)
         uses: gradle/actions/setup-gradle@v3
@@ -79,4 +82,4 @@ jobs:
           tag: v${{ env.APP_VERSION }}-b${{ github.run_number }}
           name: MenuisierDZ v${{ env.APP_VERSION }} (build ${{ github.run_number }})
           bodyFile: release-notes.md
-          artifacts: "app/build/outputs/apk/debug/app-debug.apk,app/build/outputs/apk/release/*.apk"
+          artifacts: "app/build/outputs/apk/debug/*.apk,app/build/outputs/apk/release/*.apk"
