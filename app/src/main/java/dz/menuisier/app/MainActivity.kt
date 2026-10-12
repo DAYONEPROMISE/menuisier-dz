@@ -1,10 +1,11 @@
 package dz.menuisier.app
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,13 +32,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,11 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.room.Room
 import dz.menuisier.app.data.AppDatabase
@@ -57,11 +58,28 @@ import dz.menuisier.app.data.ClientOrder
 import dz.menuisier.app.optimizer.CutOptimizer
 import dz.menuisier.app.optimizer.LinearPart
 import dz.menuisier.app.ui.DzTheme
+import dz.menuisier.app.ui.MenuEmptyState
+import dz.menuisier.app.ui.MenuHeader
+import dz.menuisier.app.ui.SectionLabel
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
+private const val PREFS = "menuisierdz"
+private const val KEY_LANG = "lang"
+
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        val lang = newBase.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LANG, "fr") ?: "fr"
+        val locale = Locale.forLanguageTag(lang)
+        Locale.setDefault(locale)
+        val config = Configuration(newBase.resources.configuration)
+        config.setLocale(locale)
+        config.setLayoutDirection(locale)
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -69,16 +87,26 @@ class MainActivity : ComponentActivity() {
             .fallbackToDestructiveMigration()
             .build()
         setContent {
-            // FR default (LTR); AR toggle flips to RTL. Dark mode follows system by default.
-            var arabic by remember { mutableStateOf(false) }
+            var lang by remember {
+                mutableStateOf(
+                    getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LANG, "fr") ?: "fr"
+                )
+            }
             var darkOverride by remember { mutableStateOf<Boolean?>(null) }
             val darkTheme = darkOverride ?: isSystemInDarkTheme()
-            CompositionLocalProvider(
-                LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr,
-            ) {
-                DzTheme(darkTheme = darkTheme) {
-                    AppRoot(db, arabic, darkTheme, { arabic = it }, { darkOverride = it })
-                }
+            DzTheme(darkTheme = darkTheme) {
+                AppRoot(
+                    db = db,
+                    lang = lang,
+                    darkTheme = darkTheme,
+                    onLang = { next ->
+                        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                            .putString(KEY_LANG, next).apply()
+                        lang = next
+                        recreate()
+                    },
+                    onDark = { darkOverride = it },
+                )
             }
         }
     }
@@ -88,38 +116,34 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppRoot(
     db: AppDatabase,
-    arabic: Boolean,
+    lang: String,
     darkTheme: Boolean,
-    onLang: (Boolean) -> Unit,
+    onLang: (String) -> Unit,
     onDark: (Boolean?) -> Unit,
 ) {
+    val arabic = lang == "ar"
     var tab by remember { mutableStateOf(0) }
-    val ordersLabel = if (arabic) "\u0627\u0644\u0637\u0644\u0628\u0627\u062a" else "Commandes"
-    val cutLabel = if (arabic) "\u0627\u0644\u0642\u0635" else "D\u00e9coupe"
-    val navItems = listOf(
-        ordersLabel to Icons.Filled.ReceiptLong,
-        cutLabel to Icons.Filled.ContentCut
-    )
+    val ordersLabel = stringResource(R.string.tab_orders)
+    val cutLabel = stringResource(R.string.tab_cut)
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (arabic) "\u0645\u0646\u062c\u0631\u0629 DZ" else "MenuisierDZ") },
-                actions = {
+            MenuHeader(
+                title = stringResource(R.string.app_name),
+                trailing = {
                     IconButton(
-                        onClick = { onDark(if (darkTheme) false else true) },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (darkTheme) "Light mode" else "Dark mode"
-                        },
+                        onClick = { onDark(if (darkTheme) false else true) }
                     ) {
                         Icon(
                             if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                            contentDescription = null,
+                            contentDescription = stringResource(
+                                if (darkTheme) R.string.action_light_mode else R.string.action_dark_mode
+                            ),
                         )
                     }
-                    Button(onClick = { onLang(!arabic) }) {
-                        Text(if (arabic) "FR" else "AR")
+                    Button(onClick = { onLang(if (arabic) "fr" else "ar") }) {
+                        Text(stringResource(R.string.lang_other))
                     }
-                },
+                }
             )
         },
         // Adaptive navigation: rail on wide screens (tablet/landscape), bar on phones.
@@ -128,9 +152,18 @@ fun AppRoot(
                 if (maxWidth < 600.dp) {
                     NavigationBar {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            navItems.forEachIndexed { i, (label, icon) ->
-                                NavBarItem(selected = tab == i, onClick = { tab = i }, label = label, icon = icon)
-                            }
+                            listOf(ordersLabel to Icons.Filled.ReceiptLong, cutLabel to Icons.Filled.ContentCut)
+                                .forEachIndexed { i, (label, icon) ->
+                                    NavigationBarItem(
+                                        selected = tab == i,
+                                        onClick = { tab = i },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                        ),
+                                        label = { Text(label) },
+                                        icon = { Icon(icon, contentDescription = label) }
+                                    )
+                                }
                         }
                     }
                 }
@@ -142,12 +175,19 @@ fun AppRoot(
             Row(Modifier.fillMaxSize()) {
                 if (wide) {
                     NavigationRail {
-                        NavRailEntry(selected = tab == 0, onClick = { tab = 0 }, label = ordersLabel, icon = Icons.Filled.ReceiptLong)
-                        NavRailEntry(selected = tab == 1, onClick = { tab = 1 }, label = cutLabel, icon = Icons.Filled.ContentCut)
+                        listOf(ordersLabel to Icons.Filled.ReceiptLong, cutLabel to Icons.Filled.ContentCut)
+                            .forEachIndexed { i, (label, icon) ->
+                                NavigationRailItem(
+                                    selected = tab == i,
+                                    onClick = { tab = i },
+                                    label = { Text(label) },
+                                    icon = { Icon(icon, contentDescription = label) }
+                                )
+                            }
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxSize()) {
-                    if (tab == 0) OrdersScreen(db, arabic) else OptimizeScreen(arabic)
+                    if (tab == 0) OrdersScreen(db) else OptimizeScreen()
                 }
             }
         }
@@ -155,43 +195,22 @@ fun AppRoot(
 }
 
 @Composable
-private fun NavBarItem(selected: Boolean, onClick: () -> Unit, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    Column(
-        modifier = Modifier.clickable(onClick = onClick).padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, contentDescription = label, tint = color)
-        Text(label, style = MaterialTheme.typography.labelMedium, color = color)
-    }
-}
-
-@Composable
-private fun NavRailEntry(selected: Boolean, onClick: () -> Unit, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    androidx.compose.material3.NavigationRailItem(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label) },
-        icon = { Icon(icon, contentDescription = label) },
-    )
-}
-
-@Composable
-fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
+fun OrdersScreen(db: AppDatabase) {
     val orders by db.orderDao().observeOrders().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
     var total by remember { mutableStateOf("") }
     var acompte by remember { mutableStateOf("") }
-    val dzd = remember { NumberFormat.getNumberInstance(Locale.FRANCE) }
+    val dzd = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
 
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text(if (arabic) "\u0627\u0644\u0632\u0628\u0648\u0646" else "Client") }, modifier = Modifier.fillMaxWidth())
+                SectionLabel(stringResource(R.string.section_new_order))
+                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.orders_client)) }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(total, { total = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0645\u062c\u0645\u0648\u0639 (\u062f\u062c)" else "Total (DZD)") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(acompte, { acompte = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0639\u0631\u0628\u0648\u0646 (\u062f\u062c)" else "Acompte (DZD)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(total, { total = it.filter(Char::isDigit) }, label = { Text(stringResource(R.string.orders_total)) }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(acompte, { acompte = it.filter(Char::isDigit) }, label = { Text(stringResource(R.string.orders_deposit)) }, modifier = Modifier.weight(1f))
                 }
                 Button(onClick = {
                     val t = total.toLongOrNull() ?: return@Button
@@ -200,8 +219,17 @@ fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
                         db.orderDao().insertOrder(ClientOrder(clientName = name, totalDzd = t, acompteDzd = a))
                         name = ""; total = ""; acompte = ""
                     }
-                }) { Text(if (arabic) "\u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628" else "Ajouter commande") }
+                }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.orders_add)) }
                 Spacer(Modifier.height(4.dp))
+            }
+        }
+        if (orders.isEmpty()) {
+            item {
+                MenuEmptyState(
+                    icon = Icons.Filled.Widgets,
+                    title = stringResource(R.string.empty_orders_title),
+                    hint = stringResource(R.string.empty_orders_hint),
+                )
             }
         }
         items(orders) { o ->
@@ -209,12 +237,16 @@ fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(o.clientName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (arabic) "\u0627\u0644\u0645\u062c\u0645\u0648\u0639: ${dzd.format(o.totalDzd)} \u062f\u062c \u2014 \u0627\u0644\u0639\u0631\u0628\u0648\u0646: ${dzd.format(o.acompteDzd)} \u062f\u062c \u2014 \u0627\u0644\u0628\u0627\u0642\u064a: ${dzd.format(o.resteDzd)} \u062f\u062c"
-                        else "Total : ${dzd.format(o.totalDzd)} DZD \u2014 Acompte : ${dzd.format(o.acompteDzd)} DZD \u2014 Reste : ${dzd.format(o.resteDzd)} DZD",
+                        stringResource(
+                            R.string.orders_line,
+                            dzd.format(o.totalDzd),
+                            dzd.format(o.acompteDzd),
+                            dzd.format(o.resteDzd),
+                        ),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        if (arabic) "\u0627\u0644\u062d\u0627\u0644\u0629: ${o.status}" else "Statut : ${o.status}",
+                        stringResource(R.string.orders_status, o.status),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -225,7 +257,8 @@ fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
 }
 
 @Composable
-fun OptimizeScreen(arabic: Boolean) {
+fun OptimizeScreen() {
+    val ctx = LocalContext.current
     var stock by remember { mutableStateOf("6000") }
     var kerf by remember { mutableStateOf("3") }
     var partsText by remember { mutableStateOf("Montant:1200x4\nTraverse:800x6\nPanneau:500x2") }
@@ -234,13 +267,14 @@ fun OptimizeScreen(arabic: Boolean) {
     LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel(stringResource(R.string.section_cut))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(stock, { stock = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0644\u0648\u062d (\u0645\u0645)" else "Barre stock (mm)") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(kerf, { kerf = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0634\u0641\u0631\u0629 (\u0645\u0645)" else "Lame/kerf (mm)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(stock, { stock = it.filter(Char::isDigit) }, label = { Text(stringResource(R.string.cut_stock)) }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(kerf, { kerf = it.filter(Char::isDigit) }, label = { Text(stringResource(R.string.cut_kerf)) }, modifier = Modifier.weight(1f))
                 }
                 OutlinedTextField(
                     partsText, { partsText = it },
-                    label = { Text(if (arabic) "\u0627\u0644\u0642\u0637\u0639: \u0627\u0633\u0645:\u0637\u0648\u0644x\u0643\u0645\u064a\u0629 (\u0633\u0637\u0631 \u0644\u0643\u0644 \u0642\u0637\u0639\u0629)" else "Pi\u00e8ces : nom:longueurXqt\u00e9 (1/ligne)") },
+                    label = { Text(stringResource(R.string.cut_parts)) },
                     modifier = Modifier.fillMaxWidth(), minLines = 3,
                 )
                 Button(onClick = {
@@ -259,15 +293,29 @@ fun OptimizeScreen(arabic: Boolean) {
                         }
                         val r = CutOptimizer.optimizeLinear(parts, stockLen, kf)
                         buildString {
-                            appendLine(if (arabic) "\u0627\u0644\u0623\u0644\u0648\u0627\u062d: ${r.barsUsed} \u2014 \u0627\u0644\u0647\u0627\u0644\u0643: ${r.totalWasteMm} \u0645\u0645 \u2014 \u0627\u0644\u0627\u0633\u062a\u063a\u0644\u0627\u0644: ${"%.1f".format(r.utilizationPct)}\u066a" else "Barres : ${r.barsUsed} \u2014 Chutes : ${r.totalWasteMm} mm \u2014 Rendement : ${"%.1f".format(r.utilizationPct)} %")
+                            appendLine(
+                                ctx.getString(
+                                    R.string.cut_summary,
+                                    r.barsUsed,
+                                    r.totalWasteMm,
+                                    String.format(Locale.getDefault(), "%.1f", r.utilizationPct),
+                                )
+                            )
                             r.bars.forEach { b ->
-                                appendLine("  #${b.barIndex}: ${b.cuts.joinToString(" + ") { "${it.partLabel}(${it.lengthMm})" }} \u2192 chute ${b.wasteMm} mm")
+                                appendLine(
+                                    "  " + ctx.getString(
+                                        R.string.cut_bar,
+                                        b.barIndex,
+                                        b.cuts.joinToString(" + ") { "${it.partLabel}(${it.lengthMm})" },
+                                        b.wasteMm,
+                                    )
+                                )
                             }
                         }
                     } catch (e: Exception) {
-                        (if (arabic) "\u062e\u0637\u0623: " else "Erreur : ") + e.message
+                        ctx.getString(R.string.cut_error, e.message ?: "")
                     }
-                }) { Text(if (arabic) "\u0627\u062d\u0633\u0628" else "Optimiser") }
+                }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.cut_optimize)) }
                 if (result.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
                         Text(result, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge)

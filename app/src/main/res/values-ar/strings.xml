@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MenuisierDZ</string>
+    <string name="tab_orders">الطلبات</string>
+    <string name="tab_cut">القص</string>
+    <string name="action_dark_mode">الوضع الداكن</string>
+    <string name="action_light_mode">الوضع الفاتح</string>
+    <string name="lang_other">FR</string>
+    <string name="orders_client">الزبون</string>
+    <string name="orders_total">المجموع (دج)</string>
+    <string name="orders_deposit">العربون (دج)</string>
+    <string name="orders_add">إضافة طلب</string>
+    <string name="orders_line">المجموع: %1$s دج — العربون: %2$s دج — الباقي: %3$s دج</string>
+    <string name="orders_status">الحالة: %1$s</string>
+    <string name="section_new_order">طلب جديد</string>
+    <string name="empty_orders_title">لا توجد طلبات</string>
+    <string name="empty_orders_hint">أضف زبونًا ومجموعه لمتابعة العربون والباقي.</string>
+    <string name="cut_stock">اللوح المخزون (مم)</string>
+    <string name="cut_kerf">الشفرة (مم)</string>
+    <string name="cut_parts">القطع: الاسم:الطولxالكمية (سطر لكل قطعة)</string>
+    <string name="cut_optimize">احسب</string>
+    <string name="cut_summary">الألواح: %1$d — الهالك: %2$d مم — المردود: %3$s ٪</string>
+    <string name="cut_bar">#%1$d : %2$s ← الباقي %3$d مم</string>
+    <string name="cut_error">خطأ: %1$s</string>
+    <string name="section_cut">إعدادات القص</string>
+</resources>
