@@ -130,8 +130,9 @@ fun AppRoot(
         },
     ) { pad ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(pad).consumeWindowInsets(pad)) {
+            val wide = maxWidth >= 600.dp
             Row(Modifier.fillMaxSize()) {
-                if (maxWidth >= 600.dp) {
+                if (wide) {
                     NavigationRail {
                         DzNavItems(tab, ordersLabel, cutLabel, { tab = it }, bar = false)
                     }
