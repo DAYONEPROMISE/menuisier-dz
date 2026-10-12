@@ -40,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,8 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.room.Room
 import dz.menuisier.app.data.AppDatabase
@@ -95,18 +98,25 @@ class MainActivity : ComponentActivity() {
             var darkOverride by remember { mutableStateOf<Boolean?>(null) }
             val darkTheme = darkOverride ?: isSystemInDarkTheme()
             DzTheme(darkTheme = darkTheme) {
-                AppRoot(
-                    db = db,
-                    lang = lang,
-                    darkTheme = darkTheme,
-                    onLang = { next ->
-                        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                            .putString(KEY_LANG, next).apply()
-                        lang = next
-                        recreate()
-                    },
-                    onDark = { darkOverride = it },
-                )
+                // Explicit direction: the wrapped context locale drives string
+                // resources, but the mirroring is forced here to stay reliable.
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides
+                        if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
+                ) {
+                    AppRoot(
+                        db = db,
+                        lang = lang,
+                        darkTheme = darkTheme,
+                        onLang = { next ->
+                            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                                .putString(KEY_LANG, next).apply()
+                            lang = next
+                            recreate()
+                        },
+                        onDark = { darkOverride = it },
+                    )
+                }
             }
         }
     }
