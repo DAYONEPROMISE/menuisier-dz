@@ -175,3 +175,105 @@ private fun NavRailEntry(selected: Boolean, onClick: () -> Unit, label: String, 
         icon = { Icon(icon, contentDescription = label) },
     )
 }
+
+@Composable
+fun OrdersScreen(db: AppDatabase, arabic: Boolean) {
+    val orders by db.orderDao().observeOrders().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    var name by remember { mutableStateOf("") }
+    var total by remember { mutableStateOf("") }
+    var acompte by remember { mutableStateOf("") }
+    val dzd = remember { NumberFormat.getNumberInstance(Locale.FRANCE) }
+
+    LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(name, { name = it }, label = { Text(if (arabic) "\u0627\u0644\u0632\u0628\u0648\u0646" else "Client") }, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(total, { total = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0645\u062c\u0645\u0648\u0639 (\u062f\u062c)" else "Total (DZD)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(acompte, { acompte = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0639\u0631\u0628\u0648\u0646 (\u062f\u062c)" else "Acompte (DZD)") }, modifier = Modifier.weight(1f))
+                }
+                Button(onClick = {
+                    val t = total.toLongOrNull() ?: return@Button
+                    val a = acompte.toLongOrNull() ?: 0L
+                    scope.launch {
+                        db.orderDao().insertOrder(ClientOrder(clientName = name, totalDzd = t, acompteDzd = a))
+                        name = ""; total = ""; acompte = ""
+                    }
+                }) { Text(if (arabic) "\u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628" else "Ajouter commande") }
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+        items(orders) { o ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(o.clientName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (arabic) "\u0627\u0644\u0645\u062c\u0645\u0648\u0639: ${dzd.format(o.totalDzd)} \u062f\u062c \u2014 \u0627\u0644\u0639\u0631\u0628\u0648\u0646: ${dzd.format(o.acompteDzd)} \u062f\u062c \u2014 \u0627\u0644\u0628\u0627\u0642\u064a: ${dzd.format(o.resteDzd)} \u062f\u062c"
+                        else "Total : ${dzd.format(o.totalDzd)} DZD \u2014 Acompte : ${dzd.format(o.acompteDzd)} DZD \u2014 Reste : ${dzd.format(o.resteDzd)} DZD",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        if (arabic) "\u0627\u0644\u062d\u0627\u0644\u0629: ${o.status}" else "Statut : ${o.status}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OptimizeScreen(arabic: Boolean) {
+    var stock by remember { mutableStateOf("6000") }
+    var kerf by remember { mutableStateOf("3") }
+    var partsText by remember { mutableStateOf("Montant:1200x4\nTraverse:800x6\nPanneau:500x2") }
+    var result by remember { mutableStateOf("") }
+
+    LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(stock, { stock = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0644\u0648\u062d (\u0645\u0645)" else "Barre stock (mm)") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(kerf, { kerf = it.filter(Char::isDigit) }, label = { Text(if (arabic) "\u0627\u0644\u0634\u0641\u0631\u0629 (\u0645\u0645)" else "Lame/kerf (mm)") }, modifier = Modifier.weight(1f))
+                }
+                OutlinedTextField(
+                    partsText, { partsText = it },
+                    label = { Text(if (arabic) "\u0627\u0644\u0642\u0637\u0639: \u0627\u0633\u0645:\u0637\u0648\u0644x\u0643\u0645\u064a\u0629 (\u0633\u0637\u0631 \u0644\u0643\u0644 \u0642\u0637\u0639\u0629)" else "Pi\u00e8ces : nom:longueurXqt\u00e9 (1/ligne)") },
+                    modifier = Modifier.fillMaxWidth(), minLines = 3,
+                )
+                Button(onClick = {
+                    result = try {
+                        val stockLen = stock.toInt()
+                        val kf = kerf.toIntOrNull() ?: 3
+                        val parts = partsText.lines().mapNotNull { line ->
+                            val halves = line.split(":")
+                            if (halves.size != 2) return@mapNotNull null
+                            val (lenQ) = halves.drop(1)
+                            val lq = lenQ.split("x", "X", "\u00d7")
+                            if (lq.size != 2) return@mapNotNull null
+                            val len = lq[0].trim().toIntOrNull() ?: return@mapNotNull null
+                            val qty = lq[1].trim().toIntOrNull() ?: return@mapNotNull null
+                            LinearPart(halves[0].trim(), len, qty)
+                        }
+                        val r = CutOptimizer.optimizeLinear(parts, stockLen, kf)
+                        buildString {
+                            appendLine(if (arabic) "\u0627\u0644\u0623\u0644\u0648\u0627\u062d: ${r.barsUsed} \u2014 \u0627\u0644\u0647\u0627\u0644\u0643: ${r.totalWasteMm} \u0645\u0645 \u2014 \u0627\u0644\u0627\u0633\u062a\u063a\u0644\u0627\u0644: ${"%.1f".format(r.utilizationPct)}\u066a" else "Barres : ${r.barsUsed} \u2014 Chutes : ${r.totalWasteMm} mm \u2014 Rendement : ${"%.1f".format(r.utilizationPct)} %")
+                            r.bars.forEach { b ->
+                                appendLine("  #${b.barIndex}: ${b.cuts.joinToString(" + ") { "${it.partLabel}(${it.lengthMm})" }} \u2192 chute ${b.wasteMm} mm")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        (if (arabic) "\u062e\u0637\u0623: " else "Erreur : ") + e.message
+                    }
+                }) { Text(if (arabic) "\u0627\u062d\u0633\u0628" else "Optimiser") }
+                if (result.isNotEmpty()) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Text(result, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+    }
+}
