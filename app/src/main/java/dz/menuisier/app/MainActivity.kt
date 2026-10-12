@@ -29,9 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -96,6 +94,10 @@ fun AppRoot(
     var tab by remember { mutableStateOf(0) }
     val ordersLabel = if (arabic) "\u0627\u0644\u0637\u0644\u0628\u0627\u062a" else "Commandes"
     val cutLabel = if (arabic) "\u0627\u0644\u0642\u0635" else "D\u00e9coupe"
+    val navItems = listOf(
+        ordersLabel to Icons.Filled.ReceiptLong,
+        cutLabel to Icons.Filled.ContentCut
+    )
     Scaffold(
         topBar = {
             TopAppBar(
@@ -123,7 +125,9 @@ fun AppRoot(
             BoxWithConstraints {
                 if (maxWidth < 600.dp) {
                     NavigationBar {
-                        DzNavItems(tab, ordersLabel, cutLabel, { tab = it }, bar = true)
+                        navItems.forEachIndexed { i, (label, icon) ->
+                            NavBarItem(selected = tab == i, onClick = { tab = i }, label = label, icon = icon)
+                        }
                     }
                 }
             }
@@ -134,7 +138,9 @@ fun AppRoot(
             Row(Modifier.fillMaxSize()) {
                 if (wide) {
                     NavigationRail {
-                        DzNavItems(tab, ordersLabel, cutLabel, { tab = it }, bar = false)
+                        navItems.forEachIndexed { i, (label, icon) ->
+                            NavRailEntry(selected = tab == i, onClick = { tab = i }, label = label, icon = icon)
+                        }
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxSize()) {
@@ -146,28 +152,23 @@ fun AppRoot(
 }
 
 @Composable
-private fun DzNavItems(tab: Int, ordersLabel: String, cutLabel: String, onTab: (Int) -> Unit, bar: Boolean) {
-    val items = listOf(
-        Triple(0, ordersLabel, Icons.Filled.ReceiptLong),
-        Triple(1, cutLabel, Icons.Filled.ContentCut),
+private fun NavBarItem(selected: Boolean, onClick: () -> Unit, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    androidx.compose.material3.NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        icon = { Icon(icon, contentDescription = label) },
     )
-    items.forEach { (i, label, icon) ->
-        if (bar) {
-            NavigationBarItem(
-                selected = tab == i,
-                onClick = { onTab(i) },
-                label = { Text(label) },
-                icon = { Icon(icon, contentDescription = label) },
-            )
-        } else {
-            NavigationRailItem(
-                selected = tab == i,
-                onClick = { onTab(i) },
-                label = { Text(label) },
-                icon = { Icon(icon, contentDescription = label) },
-            )
-        }
-    }
+}
+
+@Composable
+private fun NavRailEntry(selected: Boolean, onClick: () -> Unit, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    androidx.compose.material3.NavigationRailItem(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        icon = { Icon(icon, contentDescription = label) },
+    )
 }
 
 @Composable
