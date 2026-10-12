@@ -32,6 +32,10 @@ jobs:
         with:
           gradle-version: "8.7"
 
+      - name: Show resolved versions
+        run: |
+          ./gradlew :app:dependencies --configuration debugCompileClasspath 2>/dev/null | grep -iE "material3|material-icons|compose-bom|navigation-compose " | head -12 | cut -c1-300 | while IFS= read -r l; do echo "::warning::DEP $l"; done; true
+
       - name: Run unit tests
         run: |
           set -o pipefail
