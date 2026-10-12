@@ -36,34 +36,30 @@ jobs:
         run: |
           set -o pipefail
           gradle :app:testDebugUnitTest --stacktrace 2>&1 | tee build-test.log
-      - name: Surface test errors
+      - name: Show compile errors A
         if: failure()
         run: |
-          grep -a -B2 -A15 -E "What went wrong|Caused by|FAILED|Exception|error:" build-test.log | head -40 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
+          grep -a "e: file" build-test.log | head -8 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
+      - name: Show compile errors B
+        if: failure()
+        run: |
+          grep -a "e: file" build-test.log | head -16 | tail -8 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
+      - name: Show compile errors C
+        if: failure()
+        run: |
+          grep -a "e: file" build-test.log | head -24 | tail -8 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
       - name: Lint
         run: |
           set -o pipefail
           gradle :app:lintDebug --stacktrace 2>&1 | tee build-lint.log
-      - name: Surface lint errors
-        if: failure()
-        run: |
-          grep -a -B2 -A15 -E "What went wrong|Caused by|FAILED|Exception|Error" build-lint.log | head -40 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
       - name: Assemble debug APK
         run: |
           set -o pipefail
           gradle :app:assembleDebug --stacktrace 2>&1 | tee build-assemble.log
-      - name: Surface assemble errors
-        if: failure()
-        run: |
-          grep -a -B2 -A15 -E "What went wrong|Caused by|FAILED|Exception|error:" build-assemble.log | head -40 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
       - name: Assemble release APK (unsigned)
         run: |
           set -o pipefail
           gradle :app:assembleRelease --stacktrace 2>&1 | tee build-assemble-release.log
-      - name: Surface release assemble errors
-        if: failure()
-        run: |
-          grep -a -B2 -A15 -E "What went wrong|Caused by|FAILED|Exception|error:" build-assemble-release.log | head -40 | cut -c1-500 | while IFS= read -r l; do echo "::error::$l"; done; true
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
